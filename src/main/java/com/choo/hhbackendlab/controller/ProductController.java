@@ -2,7 +2,10 @@ package com.choo.hhbackendlab.controller;
 
 import com.choo.hhbackendlab.dto.ProductRequest;
 import com.choo.hhbackendlab.entity.Product;
-import com.choo.hhbackendlab.service.ProductService;
+import com.choo.hhbackendlab.usecase.product.AddProductStockUseCase;
+import com.choo.hhbackendlab.usecase.product.CreateProductUseCase;
+import com.choo.hhbackendlab.usecase.product.GetProductStockUseCase;
+import com.choo.hhbackendlab.usecase.product.RemoveProductStockUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,7 +17,10 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ProductController {
 
-    private final ProductService productService;
+    private final CreateProductUseCase createProductUseCase;
+    private final GetProductStockUseCase getProductStockUseCase;
+    private final RemoveProductStockUseCase removeProductStockUseCase;
+    private final AddProductStockUseCase addProductStockUseCase;
 
     /**
      * 상품 등록 API
@@ -23,7 +29,7 @@ public class ProductController {
      */
     @PostMapping
     public ResponseEntity<Product> createProduct(@Valid @RequestBody ProductRequest request) {
-        Product product = productService.createProduct(request);
+        Product product = createProductUseCase.createProduct(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(product);
     }
 
@@ -34,7 +40,7 @@ public class ProductController {
      */
     @GetMapping("/{productId}/stock")
     public ResponseEntity<Integer> getStock(@PathVariable Long productId) {
-        int stock = productService.getStock(productId);
+        int stock = getProductStockUseCase.getStock(productId);
         return ResponseEntity.ok(stock);
     }
 
@@ -48,7 +54,7 @@ public class ProductController {
     public ResponseEntity<String> removeStock(
             @PathVariable Long productId,
             @RequestParam int quantity) {
-        productService.removeStock(productId, quantity);
+        removeProductStockUseCase.removeProductStock(productId, quantity);
         return ResponseEntity.ok("재고가 " + quantity + "개 차감되었습니다.");
     }
 
@@ -62,7 +68,7 @@ public class ProductController {
     public ResponseEntity<String> addStock(
             @PathVariable Long productId,
             @RequestParam int quantity) {
-        productService.addStock(productId, quantity);
+        addProductStockUseCase.addProductStock(productId, quantity);
         return ResponseEntity.ok("재고가 " + quantity + "개 적재되었습니다.");
     }
 }
