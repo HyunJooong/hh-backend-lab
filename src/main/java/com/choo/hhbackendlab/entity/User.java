@@ -22,24 +22,33 @@ public class User {
     private String username;
     private String email;
     private String password;
-    private int balance; // 잔액 기반 결제(포인트)
     private LocalDateTime registerAt;
     private LocalDateTime updateAt;
 
     @OneToMany(mappedBy = "user")
     private List<Order> orders = new ArrayList<>();
 
-    // 포인트 충전
-    public void chargeBalance(int amount) {
-        this.balance += amount;
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private PointWallet pointWallet;
+
+    @OneToMany(mappedBy = "user")
+    private List<Coupon> coupons = new ArrayList<>();
+
+    /**
+     * PointWallet 설정 (양방향 관계 편의 메서드)
+     */
+    public void setPointWallet(PointWallet pointWallet) {
+        this.pointWallet = pointWallet;
     }
 
-    // 포인트 사용
-    public void reduceBalance(int amount) {
-        if (this.balance < amount) {
-            throw new IllegalStateException("잔액 부족");
+    /**
+     * PointWallet 초기화
+     */
+    public void initializePointWallet(int initialBalance) {
+        if (this.pointWallet != null) {
+            throw new IllegalStateException("PointWallet이 이미 존재합니다.");
         }
-        this.balance -= amount;
+        this.pointWallet = new PointWallet(this, initialBalance);
     }
 
 

@@ -23,4 +23,7 @@ public class OrderRequest {
     @NotNull(message = "금액을 확인해주세요.")
     @Min(value = 0, message = "최종 금액은 0원 이상이어야 합니다")
     private int amount;
+
+    @Min(value = 0, message = "쿠폰 금액은 0원 이상이어야 합니다.")
+    private int couponAmount;
 }
