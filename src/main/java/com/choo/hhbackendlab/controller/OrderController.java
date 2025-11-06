@@ -1,6 +1,6 @@
 package com.choo.hhbackendlab.controller;
 
-import com.choo.hhbackendlab.dto.OrderRequest;
+import com.choo.hhbackendlab.dto.requestDto.OrderRequest;
 import com.choo.hhbackendlab.entity.Order;
 import com.choo.hhbackendlab.usecase.order.CancelOrderUseCase;
 import com.choo.hhbackendlab.usecase.order.CreateOrderUseCase;

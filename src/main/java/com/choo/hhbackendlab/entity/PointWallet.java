@@ -56,7 +56,7 @@ public class PointWallet {
         this.balance += amount;
     }
 
-    // 포인트 사용
+    // 포인트 사용 및 출금
     public void use(int amount) {
         if (amount <= 0) {
             throw new IllegalArgumentException("금액을 확인해주세요.");

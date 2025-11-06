@@ -1,4 +1,4 @@
-package com.choo.hhbackendlab.dto;
+package com.choo.hhbackendlab.dto.requestDto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;

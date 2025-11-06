@@ -1,7 +1,7 @@
 package com.choo.hhbackendlab.usecase.order;
 
-import com.choo.hhbackendlab.dto.OrderItemRequest;
-import com.choo.hhbackendlab.dto.OrderRequest;
+import com.choo.hhbackendlab.dto.requestDto.OrderItemRequest;
+import com.choo.hhbackendlab.dto.requestDto.OrderRequest;
 import com.choo.hhbackendlab.entity.Order;
 import com.choo.hhbackendlab.entity.OrderItem;
 import com.choo.hhbackendlab.entity.PointWallet;
