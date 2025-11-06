@@ -4,14 +4,14 @@
 
 ```mermaid
 erDiagram
-    USER ||--o{ ORDER : "places"
+    USER ||--o{ ORDERS : "places"
     USER ||--|| POINT_WALLET : "has"
     USER ||--o{ COUPON : "owns"
 
     ORDER ||--o{ ORDER_ITEM : "contains"
     ORDER }o--|| USER : "belongs to"
 
-    ORDER_ITEM }o--|| ORDER : "belongs to"
+    ORDER_ITEM }o--|| ORDERS : "belongs to"
     ORDER_ITEM }o--|| PRODUCT : "references"
 
     PRODUCT }o--|| CATEGORY : "belongs to"
@@ -41,7 +41,7 @@ erDiagram
         LocalDateTime updatedAt
     }
 
-    ORDER {
+    ORDERS {
         Long id PK
         String orderNumber UK "UNIQUE"
         Long user_id FK
@@ -109,7 +109,7 @@ erDiagram
   - `version` 필드: 낙관적 락(Optimistic Lock)을 통한 동시성 제어
   - 포인트 충전, 사용, 출금 기능
 
-### 3. ORDER (주문)
+### 3. ORDERS (주문)
 - **관계**
   - `N:1` → USER (여러 주문이 한 사용자에 속함)
   - `1:N` → ORDER_ITEM (한 주문에 여러 상품 포함)
@@ -185,9 +185,9 @@ erDiagram
 
 ```sql
 -- Order 조회 최적화
-CREATE INDEX idx_order_number ON ORDER(orderNumber);
-CREATE INDEX idx_order_user_id ON ORDER(user_id);
-CREATE INDEX idx_order_ordered_at ON ORDER(orderedAt);
+CREATE INDEX idx_order_number ON ORDERS(orderNumber);
+CREATE INDEX idx_order_user_id ON ORDERS(user_id);
+CREATE INDEX idx_order_ordered_at ON ORDERS(orderedAt);
 
 -- Product 인기 상품 조회 최적화
 CREATE INDEX idx_product_view_count ON PRODUCT(viewCount DESC);
@@ -205,19 +205,19 @@ CREATE INDEX idx_order_item_order_id ON ORDER_ITEM(order_id);
 ## 제약조건
 
 ### UNIQUE 제약조건
-- `ORDER.orderNumber`: 주문번호 중복 방지
+- `ORDERS.orderNumber`: 주문번호 중복 방지
 - `POINT_WALLET.user_id`: 사용자당 하나의 포인트 지갑
 
 ### NOT NULL 제약조건
 - 모든 PK, FK
 - `PRODUCT.price`, `PRODUCT.stock`, `PRODUCT.viewCount`
-- `ORDER.totalAmount`, `ORDER.discountAmount`, `ORDER.finalAmount`
+- `ORDER.totalAmount`, `ORDERS.discountAmount`, `ORDERS.finalAmount`
 - `COUPON.couponAmount`, `COUPON.minOrderAmount`, `COUPON.isUsed`
 
 ### CHECK 제약조건 (애플리케이션 레벨)
 - `PRODUCT.stock >= 0`
 - `POINT_WALLET.balance >= 0`
-- `ORDER.totalAmount >= 0`
+- `ORDERS.totalAmount >= 0`
 - `COUPON.couponAmount > 0`
 - `COUPON.minOrderAmount >= 0`
 

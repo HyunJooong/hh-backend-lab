@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Entity(name = "ORDER")
+@Entity(name = "ORDERS")
 @Getter
 @NoArgsConstructor
 public class Order {
