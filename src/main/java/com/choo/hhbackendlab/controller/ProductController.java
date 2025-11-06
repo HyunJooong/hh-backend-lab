@@ -1,6 +1,6 @@
 package com.choo.hhbackendlab.controller;
 
-import com.choo.hhbackendlab.dto.ProductRequest;
+import com.choo.hhbackendlab.dto.requestDto.ProductRequest;
 import com.choo.hhbackendlab.entity.Product;
 import com.choo.hhbackendlab.usecase.product.AddProductStockUseCase;
 import com.choo.hhbackendlab.usecase.product.CreateProductUseCase;

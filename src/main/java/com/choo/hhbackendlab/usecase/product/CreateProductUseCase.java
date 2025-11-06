@@ -1,6 +1,6 @@
 package com.choo.hhbackendlab.usecase.product;
 
-import com.choo.hhbackendlab.dto.ProductRequest;
+import com.choo.hhbackendlab.dto.requestDto.ProductRequest;
 import com.choo.hhbackendlab.entity.Category;
 import com.choo.hhbackendlab.entity.Product;
 import com.choo.hhbackendlab.repository.CategoryRepository;
