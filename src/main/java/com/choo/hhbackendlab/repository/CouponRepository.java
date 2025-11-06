@@ -31,6 +31,13 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     List<Coupon> findUnissuedCouponsByName(@Param("name") String name);
 
     /**
+     * 미발급 쿠폰 하나 조회 (선착순 발급용 - 락 없음)
+     * 현재는 이름으로 조회를 하지만, 추후 쿠폰 카테고리 필드를 추가할 예정..
+     */
+    @Query("SELECT c FROM COUPON c WHERE c.user IS NULL AND c.name = :name AND c.expiredAt > CURRENT_TIMESTAMP ORDER BY c.id ASC LIMIT 1")
+    Optional<Coupon> findFirstUnissuedCouponByName(@Param("name") String name);
+
+    /**
      * 비관적 락으로 미발급 쿠폰 하나 조회 (선착순 발급용)
      * 현재는 이름으로 조회를 하지만, 추후 쿠폰 카테고리 필드를 추가할 예정..
      */

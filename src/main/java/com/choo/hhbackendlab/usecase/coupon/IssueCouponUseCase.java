@@ -34,15 +34,16 @@ public class IssueCouponUseCase {
 
     /**
      * 선착순 쿠폰 발급 (쿠폰 이름으로 발급)
+     * synchronized를 통한 동시성 제어
      * 현재는 이름으로 발급하지만, 추후 카테고리를 생성해 쿠폰 코드번호로 발급할 예정..
      */
     @Transactional
-    public Long issueCouponByName(Long userId, String couponName) {
+    public synchronized Long issueCouponByName(Long userId, String couponName) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. User ID: " + userId));
 
-        // 비관적 락으로 미발급 쿠폰 하나 조회 (선착순)
-        Coupon coupon = couponRepository.findFirstUnissuedCouponByNameWithLock(couponName)
+        // 미발급 쿠폰 하나 조회 (선착순)
+        Coupon coupon = couponRepository.findFirstUnissuedCouponByName(couponName)
                 .orElseThrow(() -> new IllegalStateException("발급 가능한 쿠폰이 없습니다. 쿠폰명: " + couponName));
 
         coupon.issue(user);
