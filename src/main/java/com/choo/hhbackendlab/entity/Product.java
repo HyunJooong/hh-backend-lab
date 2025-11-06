@@ -23,6 +23,10 @@ public class Product {
 
     private int price; //가격
     private int stock; //재고
+
+    @Column(nullable = false)
+    private long viewCount; //조회수
+
     private LocalDateTime createdAt; //상품 등록
     private LocalDateTime updatedAt; //상품 수정
 
@@ -35,6 +39,7 @@ public class Product {
         this.category = category;
         this.price = price;
         this.stock = stock;
+        this.viewCount = 0;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -66,5 +71,12 @@ public class Product {
         }
         this.stock += quantity;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 조회수를 증가시킵니다.
+     */
+    public void incrementViewCount() {
+        this.viewCount++;
     }
 }
