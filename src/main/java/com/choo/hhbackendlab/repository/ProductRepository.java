@@ -23,7 +23,7 @@ public interface ProductRepository extends JpaRepository <Product, Long> {
      */
     @Query("SELECT p FROM PRODUCT p " +
            "LEFT JOIN ORDER_ITEM oi ON oi.product.id = p.id " +
-           "LEFT JOIN ORDER o ON oi.order.id = o.id " +
+           "LEFT JOIN ORDERS o ON oi.order.id = o.id " +
            "WHERE o.orderedAt >= :weekAgo OR o.orderedAt IS NULL " +
            "GROUP BY p.id " +
            "ORDER BY SUM(COALESCE(oi.quantity, 0)) DESC")
