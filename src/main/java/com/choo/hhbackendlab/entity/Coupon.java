@@ -21,6 +21,9 @@ public class Coupon {
     private String name;  // 쿠폰 이름
 
     @Column(nullable = false)
+    private int couponCnt; //쿠폰 갯수
+
+    @Column(nullable = false)
     private int couponAmount;  // 할인 금액 (고정 금액)
 
     @Column(nullable = false)
@@ -49,10 +52,11 @@ public class Coupon {
     /**
      * 쿠폰 생성자 (미발급 쿠폰)
      */
-    public Coupon(String name, int couponAmount, int minOrderAmount, LocalDateTime expiredAt) {
-        validateCouponInfo(name, couponAmount, minOrderAmount, expiredAt);
+    public Coupon(String name, int couponCnt, int couponAmount, int minOrderAmount, LocalDateTime expiredAt) {
+        validateCouponInfo(name, couponCnt, couponAmount, minOrderAmount, expiredAt);
 
         this.name = name;
+        this.couponCnt = couponCnt;
         this.couponAmount = couponAmount;
         this.minOrderAmount = minOrderAmount;
         this.isUsed = false;
@@ -62,9 +66,12 @@ public class Coupon {
     /**
      * 쿠폰 정보 유효성 검증
      */
-    private void validateCouponInfo(String name, int couponAmount, int minOrderAmount, LocalDateTime expiredAt) {
+    private void validateCouponInfo(String name, int couponCnt, int couponAmount, int minOrderAmount, LocalDateTime expiredAt) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("쿠폰 이름을 입력해 주세요.");
+        }
+        if (couponCnt <= 0) {
+            throw new IllegalArgumentException("쿠폰 발행 수량은 0보다 커야 합니다.");
         }
         if (couponAmount <= 0) {
             throw new IllegalArgumentException("쿠폰 금액은 0보다 커야 합니다.");
