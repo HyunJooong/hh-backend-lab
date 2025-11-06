@@ -23,7 +23,7 @@ erDiagram
 
     COUPON }o--o| USER : "issued to"
 
-    USER {
+    USERS {
         Long id PK
         String username
         String email
@@ -96,7 +96,7 @@ erDiagram
 
 ## 엔티티 관계 설명
 
-### 1. USER (사용자)
+### 1. USERS (사용자)
 - **관계**
   - `1:N` → ORDER (한 사용자가 여러 주문 가능)
   - `1:1` → POINT_WALLET (한 사용자당 하나의 포인트 지갑)
