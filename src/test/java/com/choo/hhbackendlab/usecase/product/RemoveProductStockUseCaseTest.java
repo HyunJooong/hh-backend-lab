@@ -1,0 +1,130 @@
+package com.choo.hhbackendlab.usecase.product;
+
+import com.choo.hhbackendlab.entity.Category;
+import com.choo.hhbackendlab.entity.Product;
+import com.choo.hhbackendlab.repository.ProductRepository;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.lang.reflect.Field;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
+@ExtendWith(MockitoExtension.class)
+public class RemoveProductStockUseCaseTest {
+
+    @Mock
+    private ProductRepository productRepository;
+
+    @InjectMocks
+    private RemoveProductStockUseCase removeProductStockUseCase;
+
+    @Test
+    @DisplayName("재고 차감 성공 - 상품 재고가 정상적으로 감소한다")
+    void removeProductStock_Success() throws Exception {
+        // given
+        Long productId = 1L;
+        int initialStock = 20;
+        int quantityToRemove = 5;
+
+        Category category = createCategory(1L, "IT", "IT");
+        Product product = createProduct(productId, "laptop", "노트북입니다.", category, 100000, initialStock);
+
+        given(productRepository.findById(productId)).willReturn(Optional.of(product));
+
+        // when
+        removeProductStockUseCase.removeProductStock(productId, quantityToRemove);
+
+        // then
+        assertThat(product.getStock()).isEqualTo(15);
+
+        verify(productRepository).findById(productId);
+    }
+
+    @Test
+    @DisplayName("재고 차감 실패 - 존재하지 않는 상품 ID")
+    void removeProductStock_ProductNotFound() {
+        // given
+        Long invalidProductId = 999L;
+        int quantityToRemove = 5;
+
+        given(productRepository.findById(invalidProductId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> removeProductStockUseCase.removeProductStock(invalidProductId, quantityToRemove))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("상품을 찾을 수 없습니다");
+
+        verify(productRepository).findById(invalidProductId);
+    }
+
+    @Test
+    @DisplayName("재고 차감 실패 - 재고 부족")
+    void removeProductStock_InsufficientStock() throws Exception {
+        // given
+        Long productId = 1L;
+        int initialStock = 5;
+        int quantityToRemove = 10;
+
+        Category category = createCategory(1L, "IT", "IT");
+        Product product = createProduct(productId, "laptop", "노트북입니다.", category, 100000, initialStock);
+
+        given(productRepository.findById(productId)).willReturn(Optional.of(product));
+
+        // when & then
+        assertThatThrownBy(() -> removeProductStockUseCase.removeProductStock(productId, quantityToRemove))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("재고가 부족합니다");
+
+        verify(productRepository).findById(productId);
+    }
+
+    @Test
+    @DisplayName("재고 차감 실패 - 0 이하의 수량")
+    void removeProductStock_InvalidQuantity() throws Exception {
+        // given
+        Long productId = 1L;
+        int invalidQuantity = 0;
+
+        Category category = createCategory(1L, "IT", "IT");
+        Product product = createProduct(productId, "laptop", "노트북입니다.", category, 100000, 10);
+
+        given(productRepository.findById(productId)).willReturn(Optional.of(product));
+
+        // when & then
+        assertThatThrownBy(() -> removeProductStockUseCase.removeProductStock(productId, invalidQuantity))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("차감 수량은 0보다 커야 합니다");
+
+        verify(productRepository).findById(productId);
+    }
+
+    // Helper methods
+    private Category createCategory(Long id, String name, String code) throws Exception {
+        Category category = new Category();
+        setField(category, "id", id);
+        setField(category, "name", name);
+        setField(category, "code", code);
+        return category;
+    }
+
+    private Product createProduct(Long id, String name, String description, Category category, int price, int stock) throws Exception {
+        Product product = new Product(name, description, category, price, stock);
+        setField(product, "id", id);
+        return product;
+    }
+
+    private void setField(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+}
