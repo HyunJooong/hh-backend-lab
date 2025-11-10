@@ -25,6 +25,10 @@ public class Order {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coupon_id")
+    private Coupon coupon;  // 사용된 쿠폰 (선택 사항)
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
@@ -102,9 +106,76 @@ public class Order {
     }
 
     /**
-     * 주문 취소
+     * 쿠폰 할인 적용 (비즈니스 로직)
+     */
+    public void applyDiscount(Coupon coupon) {
+        if (coupon == null) {
+            return;
+        }
+        int discountAmount = coupon.calculateDiscountAmount(this.totalAmount);
+        setDiscountAmount(discountAmount);
+        this.coupon = coupon;
+        coupon.use();  // 쿠폰 사용 처리
+    }
+
+    /**
+     * 결제 처리 (비즈니스 로직)
+     */
+    public void processPayment(PointWallet pointWallet) {
+        if (pointWallet == null) {
+            throw new IllegalArgumentException("포인트 지갑을 찾을 수 없습니다.");
+        }
+        pointWallet.pay(this.finalAmount);
+    }
+
+    /**
+     * 주문 취소 (비즈니스 로직)
      */
     public void cancel() {
+        validateCancellable();
         this.cancelledAt = LocalDateTime.now();
+        restoreStock();
+        cancelCoupon();
+    }
+
+    /**
+     * 쿠폰 사용 취소
+     */
+    private void cancelCoupon() {
+        if (this.coupon != null) {
+            this.coupon.cancelUsage();
+        }
+    }
+
+    /**
+     * 취소 가능 여부 검증
+     */
+    private void validateCancellable() {
+        if (this.cancelledAt != null) {
+            throw new IllegalStateException("이미 취소된 주문입니다.");
+        }
+    }
+
+    /**
+     * 재고 복구
+     */
+    private void restoreStock() {
+        for (OrderItem orderItem : orderItems) {
+            orderItem.getProduct().addStock(orderItem.getQuantity());
+        }
+    }
+
+    /**
+     * 환불 금액 조회
+     */
+    public int getRefundAmount() {
+        return this.finalAmount;
+    }
+
+    /**
+     * 취소 여부 확인
+     */
+    public boolean isCancelled() {
+        return this.cancelledAt != null;
     }
 }

@@ -24,6 +24,5 @@ public class OrderRequest {
     @Min(value = 0, message = "최종 금액은 0원 이상이어야 합니다")
     private int amount;
 
-    @Min(value = 0, message = "쿠폰 금액은 0원 이상이어야 합니다.")
-    private int couponAmount;
+    private Long couponId;  // 쿠폰 ID (선택 사항)
 }
