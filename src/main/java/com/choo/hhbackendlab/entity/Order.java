@@ -80,7 +80,7 @@ public class Order {
      * 연관관계 편의 메서드 - OrderItem 추가
      */
     public void addOrderItem(OrderItem orderItem) {
-        this.orderItems.add(orderItem);
+
         if (orderItem.getOrder() != this) {
             orderItem.setOrder(this);
         }
