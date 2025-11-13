@@ -8,6 +8,10 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
+/**
+ * 쿠폰 템플릿
+ * 실제 발급은 UserCoupon 엔티티로 관리
+ */
 @Entity(name = "COUPON")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -21,26 +25,13 @@ public class Coupon {
     private String name;  // 쿠폰 이름
 
     @Column(nullable = false)
-    private int couponCnt; //쿠폰 갯수
+    private int couponCnt;  // 발급 가능한 쿠폰 개수 (재고)
 
     @Column(nullable = false)
     private int couponAmount;  // 할인 금액 (고정 금액)
 
     @Column(nullable = false)
     private int minOrderAmount;  // 최소 주문 금액 (0이면 제한 없음)
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = true)
-    private User user;  // 쿠폰 소유자 (null이면 미발급 쿠폰)
-
-    @Column(nullable = false)
-    private boolean isUsed;  // 사용 여부
-
-    @Column
-    private LocalDateTime issuedAt;  // 발급 일시
-
-    @Column
-    private LocalDateTime usedAt;  // 사용 일시
 
     @Column(nullable = false)
     private LocalDateTime expiredAt;  // 만료 일시
@@ -50,7 +41,7 @@ public class Coupon {
     private LocalDateTime createdAt;  // 생성 일시
 
     /**
-     * 쿠폰 생성자 (미발급 쿠폰)
+     * 쿠폰 템플릿 생성자
      */
     public Coupon(String name, int couponCnt, int couponAmount, int minOrderAmount, LocalDateTime expiredAt) {
         validateCouponInfo(name, couponCnt, couponAmount, minOrderAmount, expiredAt);
@@ -59,7 +50,6 @@ public class Coupon {
         this.couponCnt = couponCnt;
         this.couponAmount = couponAmount;
         this.minOrderAmount = minOrderAmount;
-        this.isUsed = false;
         this.expiredAt = expiredAt;
     }
 
@@ -85,90 +75,35 @@ public class Coupon {
     }
 
     /**
-     * 쿠폰 발급
+     * 쿠폰 발급 가능 여부 확인
      */
-    public void issue(User user) {
-        if (this.user != null) {
-            throw new IllegalStateException("이미 발급된 쿠폰입니다.");
-        }
-        if (user == null) {
-            throw new IllegalArgumentException("사용자를 확인할 수 없습니다.");
-        }
-        if (isExpired()) {
-            throw new IllegalStateException("만료된 쿠폰은 발급할 수 없습니다.");
-        }
-
-        this.user = user;
-        this.issuedAt = LocalDateTime.now();
-    }
-
-    /**
-     * 쿠폰 사용 가능 여부 확인
-     */
-    public boolean canUse(int orderAmount) {
-        // 사용자 확인 불가
-        if (user == null) {
-            return false;
-        }
-
-        // 이미 사용된 쿠폰
-        if (isUsed) {
-            return false;
-        }
-
-        // 만료된 쿠폰
+    public boolean canIssue() {
         if (isExpired()) {
             return false;
         }
-
-        // 최소 주문 금액 미달
-        if (orderAmount < minOrderAmount) {
+        if (couponCnt <= 0) {
             return false;
         }
-
         return true;
     }
 
     /**
-     * 쿠폰 사용
+     * 쿠폰 발급 (couponCnt 감소)
+     * 실제 발급 내역은 UserCoupon 엔티티로 관리
      */
-    public void use() {
+    public UserCoupon issueCoupon(User user) {
+        if (!canIssue()) {
+            throw new IllegalStateException("발급 가능한 쿠폰이 없습니다. 쿠폰명: " + this.name);
+        }
         if (user == null) {
-            throw new IllegalStateException("발급되지 않은 쿠폰입니다.");
-        }
-        if (isUsed) {
-            throw new IllegalStateException("이미 사용된 쿠폰입니다.");
-        }
-        if (isExpired()) {
-            throw new IllegalStateException("만료된 쿠폰입니다.");
+            throw new IllegalArgumentException("사용자를 확인할 수 없습니다.");
         }
 
-        this.isUsed = true;
-        this.usedAt = LocalDateTime.now();
-    }
+        // 쿠폰 재고 감소
+        this.couponCnt--;
 
-    /**
-     * 쿠폰 사용 취소 (주문 취소 시)
-     */
-    public void cancelUsage() {
-        if (!isUsed) {
-            throw new IllegalStateException("사용되지 않은 쿠폰입니다.");
-        }
-
-        this.isUsed = false;
-        this.usedAt = null;
-    }
-
-    /**
-     * 할인 금액 계산
-     */
-    public int calculateDiscountAmount(int orderAmount) {
-        if (!canUse(orderAmount)) {
-            return 0;
-        }
-
-        // 할인 금액이 주문 금액보다 클 수 없음
-        return Math.min(couponAmount, orderAmount);
+        // UserCoupon 생성 및 반환
+        return new UserCoupon(this, user);
     }
 
     /**
@@ -179,9 +114,9 @@ public class Coupon {
     }
 
     /**
-     * 쿠폰 발급 여부 확인
+     * 남은 발급 가능 개수 조회
      */
-    public boolean isIssued() {
-        return user != null;
+    public int getRemainingCount() {
+        return couponCnt;
     }
 }
