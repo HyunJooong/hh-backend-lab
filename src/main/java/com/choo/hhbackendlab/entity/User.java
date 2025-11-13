@@ -32,7 +32,7 @@ public class User {
     private PointWallet pointWallet;
 
     @OneToMany(mappedBy = "user")
-    private List<Coupon> coupons = new ArrayList<>();
+    private List<UserCoupon> coupons = new ArrayList<>();
 
     /**
      * PointWallet 설정 (양방향 관계 편의 메서드)

@@ -26,8 +26,8 @@ public class Order {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "coupon_id")
-    private Coupon coupon;  // 사용된 쿠폰 (선택 사항)
+    @JoinColumn(name = "user_coupon_id")
+    private UserCoupon userCoupon;  // 사용된 쿠폰 (선택 사항)
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
@@ -108,14 +108,14 @@ public class Order {
     /**
      * 쿠폰 할인 적용 (비즈니스 로직)
      */
-    public void applyDiscount(Coupon coupon) {
-        if (coupon == null) {
+    public void applyDiscount(UserCoupon userCoupon) {
+        if (userCoupon == null) {
             return;
         }
-        int discountAmount = coupon.calculateDiscountAmount(this.totalAmount);
+        int discountAmount = userCoupon.calculateDiscountAmount(this.totalAmount);
         setDiscountAmount(discountAmount);
-        this.coupon = coupon;
-        coupon.use();  // 쿠폰 사용 처리
+        this.userCoupon = userCoupon;
+        userCoupon.use();  // 쿠폰 사용 처리
     }
 
     /**
@@ -142,8 +142,8 @@ public class Order {
      * 쿠폰 사용 취소
      */
     private void cancelCoupon() {
-        if (this.coupon != null) {
-            this.coupon.cancelUsage();
+        if (this.userCoupon != null) {
+            this.userCoupon.cancelUsage();
         }
     }
 
