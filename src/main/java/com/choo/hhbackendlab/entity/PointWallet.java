@@ -67,6 +67,20 @@ public class PointWallet {
         this.balance -= amount;
     }
 
+    // 결제 처리 (비즈니스 로직)
+    public void pay(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("결제 금액을 확인해주세요.");
+        }
+        if (!hasEnoughBalance(amount)) {
+            throw new IllegalStateException(
+                    "포인트 잔액이 부족합니다. 필요 금액: " + amount +
+                    ", 현재 잔액: " + this.balance
+            );
+        }
+        this.balance -= amount;
+    }
+
     // 잔액 확인
     public boolean hasEnoughBalance(int amount) {
         return this.balance >= amount;

@@ -2,14 +2,11 @@ package com.choo.hhbackendlab.usecase.order;
 
 import com.choo.hhbackendlab.dto.requestDto.OrderItemRequest;
 import com.choo.hhbackendlab.dto.requestDto.OrderRequest;
-import com.choo.hhbackendlab.entity.Order;
-import com.choo.hhbackendlab.entity.OrderItem;
-import com.choo.hhbackendlab.entity.PointWallet;
-import com.choo.hhbackendlab.entity.Product;
-import com.choo.hhbackendlab.entity.User;
+import com.choo.hhbackendlab.entity.*;
 import com.choo.hhbackendlab.repository.OrderRepository;
 import com.choo.hhbackendlab.repository.PointWalletRepository;
 import com.choo.hhbackendlab.repository.ProductRepository;
+import com.choo.hhbackendlab.repository.UserCouponRepository;
 import com.choo.hhbackendlab.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -26,6 +23,7 @@ public class CreateOrderUseCase {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final PointWalletRepository pointWalletRepository;
+    private final UserCouponRepository userCouponRepository;
 
     @Transactional
     public Order createOrder(OrderRequest request) {
@@ -59,24 +57,15 @@ public class CreateOrderUseCase {
             order.addOrderItem(orderItem);
         }
 
-        // 5. Coupon 할인 금액 적용 (요청에 할인 금액이 있는 경우)
-        if (request.getCouponAmount() > 0) {
-            order.setDiscountAmount(request.getCouponAmount());
+        // 5. UserCoupon 할인 적용 (도메인 메서드로 위임)
+        if (request.getCouponId() != null) {
+            UserCoupon userCoupon = userCouponRepository.findById(request.getCouponId())
+                    .orElseThrow(() -> new IllegalArgumentException("사용자 쿠폰을 찾을 수 없습니다. ID: " + request.getCouponId()));
+            order.applyDiscount(userCoupon);
         }
 
-        // 6. 포인트 결제 처리
-        int paymentAmount = order.getFinalAmount();
-
-        // 잔액 확인
-        if (!pointWallet.hasEnoughBalance(paymentAmount)) {
-            throw new IllegalStateException(
-                    "포인트 잔액이 부족합니다. 필요 금액: " + paymentAmount +
-                    ", 현재 잔액: " + pointWallet.getBalance()
-            );
-        }
-
-        // 포인트 차감
-        pointWallet.use(paymentAmount);
+        // 6. 포인트 결제 처리 (도메인 메서드로 위임)
+        order.processPayment(pointWallet);
 
         // 7. 주문 저장
         return orderRepository.save(order);
