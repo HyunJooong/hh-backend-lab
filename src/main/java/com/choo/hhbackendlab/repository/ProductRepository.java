@@ -34,7 +34,7 @@ public interface ProductRepository extends JpaRepository <Product, Long> {
     /**
      * 상품 조회수를 증가시킵니다. (벌크 업데이트)
      * @param productId 상품 ID
-     * DB 부하를 줄이이기 위해 Redis로 구현 예정..
+     * 매번 UPDATE 비효율 -> DB 부하를 줄이이기 위해 Redis로 구현 예정..
      */
     @Modifying
     @Query("UPDATE PRODUCT p SET p.viewCount = p.viewCount + 1 WHERE p.id = :productId")
