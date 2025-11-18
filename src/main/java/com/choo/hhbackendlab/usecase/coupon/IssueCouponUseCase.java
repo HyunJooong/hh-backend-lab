@@ -6,7 +6,7 @@ import com.choo.hhbackendlab.entity.UserCoupon;
 import com.choo.hhbackendlab.repository.CouponRepository;
 import com.choo.hhbackendlab.repository.UserCouponRepository;
 import com.choo.hhbackendlab.repository.UserRepository;
-import com.choo.hhbackendlab.service.CouponIssueQueueService;
+import com.choo.hhbackendlab.service.CouponIssue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,7 @@ public class IssueCouponUseCase {
     private final CouponRepository couponRepository;
     private final UserRepository userRepository;
     private final UserCouponRepository userCouponRepository;
-    private final CouponIssueQueueService queueService;
+    private final CouponIssue couponIssue;
 
     /**
      * 특정 쿠폰 ID로 쿠폰 발급
@@ -56,6 +56,6 @@ public class IssueCouponUseCase {
     public Long issueCouponByName(Long userId, String couponName) {
         // Queue에 쿠폰 발급 요청 추가
         // 실제 쿠폰 발급은 CouponIssueQueueProcessor에서 비동기로 처리됨
-        return queueService.addToQueue(userId, couponName);
+        return couponIssue.addToQueue(userId, couponName);
     }
 }

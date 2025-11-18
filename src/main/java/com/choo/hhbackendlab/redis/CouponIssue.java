@@ -1,6 +1,7 @@
 package com.choo.hhbackendlab.service;
 
 import com.choo.hhbackendlab.entity.*;
+import com.choo.hhbackendlab.redis.QueueStatus;
 import com.choo.hhbackendlab.repository.CouponIssueQueueRepository;
 import com.choo.hhbackendlab.repository.CouponRepository;
 import com.choo.hhbackendlab.repository.UserCouponRepository;
@@ -19,7 +20,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CouponIssueQueueService {
+public class CouponIssue {
 
     private final CouponIssueQueueRepository queueRepository;
     private final CouponRepository couponRepository;

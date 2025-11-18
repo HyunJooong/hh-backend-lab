@@ -1,4 +1,4 @@
-package com.choo.hhbackendlab.entity;
+package com.choo.hhbackendlab.redis;
 
 /**
  * 쿠폰 발급 Queue 상태
