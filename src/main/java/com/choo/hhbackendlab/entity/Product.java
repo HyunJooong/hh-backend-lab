@@ -72,11 +72,4 @@ public class Product {
         this.stock += quantity;
         this.updatedAt = LocalDateTime.now();
     }
-
-    /**
-     * 조회수를 증가시킵니다.
-     */
-    public void incrementViewCount() {
-        this.viewCount++;
-    }
 }
