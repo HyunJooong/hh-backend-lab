@@ -27,6 +27,15 @@ public interface ProductRepository extends JpaRepository <Product, Long> {
     Optional<Product> findByIdWithLock(@Param("productId") Long productId);
 
     /**
+     * 재고 원자적 감소
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE PRODUCT p SET p.stock = p.stock - :quantity " +
+            "WHERE p.id = :productId AND p.stock >= :quantity")
+    int decreaseStock(@Param("productId") Long productId,
+                      @Param("quantity") int quantity);
+
+    /**
      * 조회수 순으로 상품 조회 (인기 상품)
      */
     @Query("SELECT p FROM PRODUCT p ORDER BY p.viewCount DESC")

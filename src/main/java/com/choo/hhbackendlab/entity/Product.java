@@ -48,7 +48,7 @@ public class Product {
      * 재고를 차감합니다.
      * @param quantity 차감할 수량
      * @throws IllegalArgumentException 재고가 부족한 경우
-     */
+     *//*
     public void removeStock(int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("차감 수량은 0보다 커야 합니다.");
@@ -58,7 +58,7 @@ public class Product {
         }
         this.stock -= quantity;
         this.updatedAt = LocalDateTime.now();
-    }
+    }*/
 
     /**
      * 재고를 적재합니다.
