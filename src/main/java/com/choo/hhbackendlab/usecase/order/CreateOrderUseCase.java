@@ -35,12 +35,13 @@ public class CreateOrderUseCase {
         PointWallet pointWallet = pointWalletRepository.findByUserIdWithLock(request.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("포인트 지갑을 찾을 수 없습니다. User ID: " + request.getUserId()));
 
-        // 3. 주문 생성 (주문번호는 도메인 모델에서 자동 생성)
+        // 3. 주문번호 생성
         Order order = Order.createOrder(user);
 
         // 4. 주문 아이템 추가 및 재고 차감
+        // 비관적락을 사용해서 상품 조회
         for (OrderItemRequest itemRequest : request.getOrderItems()) {
-            Product product = productRepository.findById(itemRequest.getProductId())
+            Product product = productRepository.findByIdWithLock(itemRequest.getProductId())
                     .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + itemRequest.getProductId()));
 
             // 재고 차감
@@ -57,14 +58,14 @@ public class CreateOrderUseCase {
             order.addOrderItem(orderItem);
         }
 
-        // 5. UserCoupon 할인 적용 (도메인 메서드로 위임)
+        // 5. UserCoupon 할인 적용
         if (request.getCouponId() != null) {
             UserCoupon userCoupon = userCouponRepository.findById(request.getCouponId())
                     .orElseThrow(() -> new IllegalArgumentException("사용자 쿠폰을 찾을 수 없습니다. ID: " + request.getCouponId()));
             order.applyDiscount(userCoupon);
         }
 
-        // 6. 포인트 결제 처리 (도메인 메서드로 위임)
+        // 6. 포인트 결제 처리
         order.processPayment(pointWallet);
 
         // 7. 주문 저장

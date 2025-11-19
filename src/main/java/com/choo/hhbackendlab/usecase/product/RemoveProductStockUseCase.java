@@ -17,8 +17,10 @@ public class RemoveProductStockUseCase {
 
     @Transactional
     public void removeProductStock(Long productId, int quantity) {
-        Product product = productRepository.findById(productId)
+        Product product = productRepository.findByIdWithLock(productId)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
+
+        //Dirty Checking 자동 update
         product.removeStock(quantity);
     }
 }
