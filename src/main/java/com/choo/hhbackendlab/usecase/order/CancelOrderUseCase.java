@@ -27,7 +27,7 @@ public class CancelOrderUseCase {
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다. 주문번호: " + orderNumber));
 
         // 2. PointWallet 조회
-        PointWallet pointWallet = pointWalletRepository.findByUser(order.getUser())
+        PointWallet pointWallet = pointWalletRepository.findByUserIdWithLock(order.getUser().getId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "포인트 지갑을 찾을 수 없습니다. User ID: " + order.getUser().getId()
                 ));
