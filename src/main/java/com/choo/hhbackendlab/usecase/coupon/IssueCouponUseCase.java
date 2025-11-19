@@ -24,7 +24,7 @@ public class IssueCouponUseCase {
     private final CouponIssue couponIssue;
 
     /**
-     * 특정 쿠폰 ID로 쿠폰 발급
+     * 특정 쿠폰 ID로 1장 쿠폰 발급
      */
     @Transactional
     public Long issueCoupon(Long userId, Long couponId) {
