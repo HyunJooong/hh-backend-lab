@@ -17,7 +17,8 @@ public class AddProductStockUseCase {
 
     @Transactional
     public void addProductStock(Long productId, int quantity) {
-        Product product = productRepository.findById(productId)
+        // 비관적 락을 통해 동시성 제어
+        Product product = productRepository.findByIdWithLock(productId)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + productId));
         product.addStock(quantity);
     }

@@ -3,6 +3,7 @@ package com.choo.hhbackendlab.controller;
 import com.choo.hhbackendlab.dto.requestDto.CreateCouponRequest;
 import com.choo.hhbackendlab.dto.requestDto.IssueCouponByNameRequest;
 import com.choo.hhbackendlab.dto.requestDto.IssueCouponRequest;
+import com.choo.hhbackendlab.entity.Coupon;
 import com.choo.hhbackendlab.usecase.coupon.CreateCouponUseCase;
 import com.choo.hhbackendlab.usecase.coupon.IssueCouponUseCase;
 import jakarta.validation.Valid;
@@ -27,8 +28,8 @@ public class CouponController {
      * @return 생성된 쿠폰 ID 목록
      */
     @PostMapping
-    public ResponseEntity<List<Long>> createCoupons(@Valid @RequestBody CreateCouponRequest request) {
-        List<Long> couponIds = createCouponUseCase.createCoupons(
+    public ResponseEntity<Coupon> createCoupons(@Valid @RequestBody CreateCouponRequest request) {
+        Coupon couponIds = createCouponUseCase.createCoupons(
                 request.getName(),
                 request.getCouponCnt(),
                 request.getCouponAmount(),

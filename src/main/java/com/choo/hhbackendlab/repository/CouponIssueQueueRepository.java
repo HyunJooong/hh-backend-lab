@@ -1,7 +1,7 @@
 package com.choo.hhbackendlab.repository;
 
 import com.choo.hhbackendlab.entity.CouponIssueQueue;
-import com.choo.hhbackendlab.entity.QueueStatus;
+import com.choo.hhbackendlab.redis.QueueStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

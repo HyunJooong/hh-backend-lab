@@ -89,7 +89,7 @@ public class PointWallet {
     // 포인트 환불
     public void refund(int amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("환불 금액을 확인해주세요.");
+            throw new IllegalArgumentException("포인트 가격을 확인해주세요.");
         }
         this.balance += amount;
     }

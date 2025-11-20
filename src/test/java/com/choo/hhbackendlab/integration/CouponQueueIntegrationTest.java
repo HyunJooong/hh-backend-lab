@@ -1,6 +1,7 @@
 package com.choo.hhbackendlab.integration;
 
 import com.choo.hhbackendlab.entity.*;
+import com.choo.hhbackendlab.redis.QueueStatus;
 import com.choo.hhbackendlab.repository.CouponIssueQueueRepository;
 import com.choo.hhbackendlab.repository.CouponRepository;
 import com.choo.hhbackendlab.repository.UserCouponRepository;

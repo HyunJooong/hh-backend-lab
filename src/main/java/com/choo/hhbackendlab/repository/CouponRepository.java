@@ -4,6 +4,7 @@ import com.choo.hhbackendlab.entity.Coupon;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,4 +32,13 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM COUPON c WHERE c.name = :name AND c.couponCnt > 0 AND c.expiredAt > CURRENT_TIMESTAMP ORDER BY c.id ASC LIMIT 1")
     Optional<Coupon> findFirstAvailableCouponByNameWithLock(@Param("name") String name);
+
+    /**
+     * 쿠폰 재고 원자적(mysql Row Lock 사용을 통한 쿠폰 재고 감소
+     * WHERE 조건에 couponCnt > 0을 넣어서 재고가 있을 때만 감소
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE COUPON c SET c.couponCnt = c.couponCnt - 1 " +
+            "WHERE c.id = :couponId AND c.couponCnt > 0")
+    int decreaseCouponCount(@Param("couponId") Long couponId);
 }
