@@ -63,7 +63,7 @@ public class CreateOrderUseCase {
         // 3. 상품 ID 리스트 추출 및 정렬 (락 순서 일관성 보장)
         List<Long> productIds = request.getOrderItems().stream()
                 .map(OrderItemRequest::getProductId)
-                .sorted()  // ⭐ ID 순서로 정렬하여 데드락 방지
+                .sorted()  //ID 순서로 정렬하여 데드락 방지
                 .toList();
 
         // 4. 재고 차감 (DB 쿼리로 원자적 처리 - 락 불필요!)
