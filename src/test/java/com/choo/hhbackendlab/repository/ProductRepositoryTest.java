@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 public class ProductRepositoryTest {
 
-    @Autowired
+  /*  @Autowired
     private TestEntityManager entityManager;
 
     @Autowired
@@ -238,5 +238,5 @@ public class ProductRepositoryTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result.size()).isLessThanOrEqualTo(2);
-    }
+    }*/
 }

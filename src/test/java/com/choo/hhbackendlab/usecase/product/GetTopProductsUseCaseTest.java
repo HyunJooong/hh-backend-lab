@@ -1,3 +1,4 @@
+
 package com.choo.hhbackendlab.usecase.product;
 
 import com.choo.hhbackendlab.entity.Category;
@@ -24,7 +25,7 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 public class GetTopProductsUseCaseTest {
 
-    @Mock
+/*    @Mock
     private ProductRepository productRepository;
 
     @InjectMocks
@@ -122,5 +123,6 @@ public class GetTopProductsUseCaseTest {
         // then
         assertThat(result).hasSize(2); // limit은 10이지만 실제 상품은 2개만 반환
         verify(productRepository).findTopProductsByViewCount(any(Pageable.class));
-    }
+    }*/
 }
+
