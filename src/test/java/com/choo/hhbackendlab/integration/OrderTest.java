@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -66,106 +65,145 @@ public class OrderTest {
     @Autowired
     private CategoryRepository categoryRepository;
 
-    private User testUser;
-    private Product testProduct1;
-    private Product testProduct2;
-    private Category testCategory;
+    @Autowired
+    private UserCouponRepository userCouponRepository;
 
     @BeforeEach
-    void setUp() throws Exception {
-        // 기존 데이터 정리
+    void setUp() {
         orderRepository.deleteAll();
-        couponRepository.deleteAll();
+        userCouponRepository.deleteAll();
+        pointWalletRepository.deleteAll();
         productRepository.deleteAll();
         categoryRepository.deleteAll();
-        pointWalletRepository.deleteAll();
+        couponRepository.deleteAll();
         userRepository.deleteAll();
-
-        // 테스트 카테고리 생성
-        testCategory = new Category();
-        setField(testCategory, "name", "전자제품");
-        setField(testCategory, "code", "ELEC");
-        testCategory = categoryRepository.save(testCategory);
-
-        // 테스트 사용자 생성
-        testUser = new User();
-        testUser = userRepository.save(testUser);
-
-        // PointWallet 생성 (충분한 잔액)
-        PointWallet pointWallet = new PointWallet(testUser, 100000);
-        pointWalletRepository.save(pointWallet);
-
-        // 테스트 상품 생성
-        testProduct1 = new Product("노트북", "고성능 노트북", testCategory, 50000, 10);
-        testProduct1 = productRepository.save(testProduct1);
-
-        testProduct2 = new Product("마우스", "무선 마우스", testCategory, 20000, 20);
-        testProduct2 = productRepository.save(testProduct2);
     }
 
     @Test
-    @Transactional
-    @DisplayName("주문 생성 성공 - 쿠폰 없이 단일 상품 주문")
-    void createOrder_Success_WithoutCoupon_SingleProduct() {
-        // given
-        OrderItemRequest orderItemRequest = createOrderItemRequest(testProduct1.getId(), 2);
-        OrderRequest orderRequest = createOrderRequest(
-                testUser.getId(),
-                List.of(orderItemRequest),
+    @DisplayName("포인트와 쿠폰을 사용하여 주문 생성 성공")
+    void createOrderWithPointAndCoupon_Success() {
+        // Given
+        // 1. 카테고리 생성
+        Category category = createCategory("전자제품", "ELECTRONICS");
+        categoryRepository.save(category);
+
+        // 2. 상품 생성 (가격: 500,000원, 재고: 10개)
+        Product product = new Product("노트북", "고성능 노트북", category, 500000, 10);
+        productRepository.save(product);
+
+        // 3. 사용자 생성
+        User user = createUser("testuser", "test@test.com", "password123");
+        userRepository.save(user);
+
+        // 4. 포인트 지갑 생성 (초기 잔액: 1,000,000 포인트)
+        PointWallet pointWallet = new PointWallet(user, 1000000);
+        pointWalletRepository.save(pointWallet);
+
+        // 5. 쿠폰 템플릿 생성 (할인 금액: 50,000원, 최소 주문 금액: 100,000원)
+        Coupon coupon = new Coupon(
+                "신규 회원 할인 쿠폰",
+                100,
+                50000,
                 100000,
-                null
+                LocalDateTime.now().plusDays(30)
         );
+        couponRepository.save(coupon);
 
-        // when
-        Order order = createOrderUseCase.createOrder(orderRequest);
+        // 6. 사용자 쿠폰 발급
+        UserCoupon userCoupon = new UserCoupon(coupon, user);
+        userCouponRepository.save(userCoupon);
 
-        // then
-        assertThat(order).isNotNull();
-        assertThat(order.getId()).isNotNull();
-        assertThat(order.getOrderNumber()).isNotNull();
-        assertThat(order.getUser().getId()).isEqualTo(testUser.getId());
-        assertThat(order.getOrderItems()).hasSize(1);
-        assertThat(order.getTotalAmount()).isEqualTo(100000);
-        assertThat(order.getDiscountAmount()).isEqualTo(0);
-        assertThat(order.getFinalAmount()).isEqualTo(100000);
-        assertThat(order.isCancelled()).isFalse();
+        // 7. 주문 요청 생성 (수량: 2개)
+        OrderItemRequest orderItemRequest = new OrderItemRequest();
+        setField(orderItemRequest, "productId", product.getId());
+        setField(orderItemRequest, "quantity", 2);
 
-        // 재고 차감 확인
-        Product updatedProduct = productRepository.findById(testProduct1.getId()).orElseThrow();
+        OrderRequest orderRequest = new OrderRequest();
+        setField(orderRequest, "userId", user.getId());
+        setField(orderRequest, "orderItems", List.of(orderItemRequest));
+        setField(orderRequest, "couponId", userCoupon.getId());
+        setField(orderRequest, "amount", 950000); // 총 금액 1,000,000 - 쿠폰 할인 50,000 = 950,000
+
+        // When
+        Order savedOrder = createOrderUseCase.createOrder(orderRequest);
+
+        // Then
+        // 1. 주문이 생성되었는지 확인
+        assertThat(savedOrder).isNotNull();
+        assertThat(savedOrder.getId()).isNotNull();
+
+        // 2. 주문 정보 확인
+        assertThat(savedOrder.getUser().getId()).isEqualTo(user.getId());
+        assertThat(savedOrder.getOrderNumber()).isNotNull();
+        assertThat(savedOrder.getOrderNumber()).startsWith("ORD-");
+        assertThat(savedOrder.getOrderedAt()).isNotNull();
+        assertThat(savedOrder.getCancelledAt()).isNull();
+
+        // 3. 주문 아이템 확인
+        assertThat(savedOrder.getOrderItems()).hasSize(1);
+        OrderItem orderItem = savedOrder.getOrderItems().get(0);
+        assertThat(orderItem.getProduct().getId()).isEqualTo(product.getId());
+        assertThat(orderItem.getQuantity()).isEqualTo(2);
+        assertThat(orderItem.getPrice()).isEqualTo(500000);
+        assertThat(orderItem.getTotalPrice()).isEqualTo(1000000); // 500,000 * 2
+
+        // 4. 가격 계산 확인
+        // 총 주문 금액: 500,000 * 2 = 1,000,000
+        // 쿠폰 할인: 50,000
+        // 최종 결제 금액: 1,000,000 - 50,000 = 950,000
+        assertThat(savedOrder.getTotalAmount()).isEqualTo(1000000);
+        assertThat(savedOrder.getDiscountAmount()).isEqualTo(50000);
+        assertThat(savedOrder.getFinalAmount()).isEqualTo(950000);
+
+        // 5. 주문에 쿠폰이 연결되어 있는지 확인
+        assertThat(savedOrder.getUserCoupon()).isNotNull();
+        assertThat(savedOrder.getUserCoupon().getId()).isEqualTo(userCoupon.getId());
+
+        // 6. 주문에 연결된 쿠폰이 사용되었는지 확인
+        assertThat(savedOrder.getUserCoupon().isUsed()).isTrue();
+        assertThat(savedOrder.getUserCoupon().getUsedAt()).isNotNull();
+
+        // 7. 상품 재고 확인 (10 - 2 = 8)
+        Product updatedProduct = productRepository.findById(product.getId()).orElseThrow();
         assertThat(updatedProduct.getStock()).isEqualTo(8);
 
-        // 포인트 차감 확인
-        PointWallet updatedWallet = pointWalletRepository.findByUserIdWithLock(testUser.getId()).orElseThrow();
-        assertThat(updatedWallet.getBalance()).isEqualTo(0);
+        // 8. 포인트 잔액 확인 (1,000,000 - 950,000 = 50,000)
+        PointWallet updatedPointWallet = pointWalletRepository.findById(pointWallet.getId()).orElseThrow();
+        assertThat(updatedPointWallet.getBalance()).isEqualTo(50000);
     }
 
-    private OrderRequest createOrderRequest(Long userId, List<OrderItemRequest> orderItems, int amount, Long couponId) {
+    /**
+     * Category 생성 헬퍼 메서드 (Reflection 사용)
+     */
+    private Category createCategory(String name, String code) {
+        Category category = new Category();
+        setField(category, "name", name);
+        setField(category, "code", code);
+        return category;
+    }
+
+    /**
+     * User 생성 헬퍼 메서드 (Reflection 사용)
+     */
+    private User createUser(String username, String email, String password) {
+        User user = new User();
+        setField(user, "username", username);
+        setField(user, "email", email);
+        setField(user, "password", password);
+        setField(user, "registerAt", LocalDateTime.now());
+        return user;
+    }
+
+    /**
+     * Reflection을 사용하여 private 필드에 값을 설정하는 헬퍼 메서드
+     */
+    private void setField(Object target, String fieldName, Object value) {
         try {
-            OrderRequest request = new OrderRequest();
-            setField(request, "userId", userId);
-            setField(request, "orderItems", orderItems);
-            setField(request, "amount", amount);
-            setField(request, "couponId", couponId);
-            return request;
+            Field field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
         } catch (Exception e) {
-            throw new RuntimeException("OrderRequest 생성 실패", e);
+            throw new RuntimeException("필드 설정 실패: " + fieldName, e);
         }
-    }
-
-    private OrderItemRequest createOrderItemRequest(Long productId, Integer quantity) {
-        try {
-            OrderItemRequest request = new OrderItemRequest();
-            setField(request, "productId", productId);
-            setField(request, "quantity", quantity);
-            return request;
-        } catch (Exception e) {
-            throw new RuntimeException("OrderItemRequest 생성 실패", e);
-        }
-    }
-
-    private void setField(Object target, String fieldName, Object value) throws Exception {
-        Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
     }
 }

@@ -99,9 +99,6 @@ public class Coupon {
             throw new IllegalArgumentException("사용자를 확인할 수 없습니다.");
         }
 
-        // 쿠폰 재고 감소
-        this.couponCnt--;
-
         // UserCoupon 생성 및 반환
         return new UserCoupon(this, user);
     }

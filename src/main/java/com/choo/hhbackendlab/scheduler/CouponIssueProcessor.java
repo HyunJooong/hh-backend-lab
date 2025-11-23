@@ -1,8 +1,9 @@
 package com.choo.hhbackendlab.scheduler;
 
-import com.choo.hhbackendlab.service.CouponIssueQueueService;
+import com.choo.hhbackendlab.service.CouponIssue;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,9 +14,10 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class CouponIssueQueueProcessor {
+@ConditionalOnProperty(name = "spring.scheduling.enabled", havingValue = "true", matchIfMissing = true)
+public class CouponIssueProcessor {
 
-    private final CouponIssueQueueService queueService;
+    private final CouponIssue couponIssue;
 
     /**
      * Queue 처리 스케줄러
@@ -27,7 +29,7 @@ public class CouponIssueQueueProcessor {
         try {
             // Queue에서 요청을 하나씩 처리
             // 처리할 요청이 없으면 false 반환
-            boolean processed = queueService.processNextQueue();
+            boolean processed = couponIssue.processNextQueue();
 
             // 처리할 요청이 있었다면 즉시 다음 요청 처리 시도
             // 처리할 요청이 없으면 100ms 대기 후 다시 시도
@@ -45,7 +47,7 @@ public class CouponIssueQueueProcessor {
      */
     @Scheduled(fixedRate = 60000)
     public void logQueueStatus() {
-        long pendingCount = queueService.getPendingQueueCount();
+        long pendingCount = couponIssue.getPendingQueueCount();
         if (pendingCount > 0) {
             log.info("대기 중인 쿠폰 발급 요청: {}건", pendingCount);
         }

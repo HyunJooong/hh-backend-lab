@@ -12,6 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 /**
  * 새로운 주문을 생성하고, 포인트 결제를 처리하며, 재고를 차감한다
  */
@@ -31,16 +35,15 @@ public class CreateOrderUseCase {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. ID: " + request.getUserId()));
 
-        // 2. PointWallet 조회 (비관적 락 적용)
-        PointWallet pointWallet = pointWalletRepository.findByUserIdWithLock(request.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("포인트 지갑을 찾을 수 없습니다. User ID: " + request.getUserId()));
 
-        // 3. 주문 생성 (주문번호는 도메인 모델에서 자동 생성)
+
+        // 2. 주문번호 생성
         Order order = Order.createOrder(user);
 
-        // 4. 주문 아이템 추가 및 재고 차감
+        /*// 3. 주문 아이템 추가 및 재고 차감
+        // 비관적락을 사용해서 상품 조회
         for (OrderItemRequest itemRequest : request.getOrderItems()) {
-            Product product = productRepository.findById(itemRequest.getProductId())
+            Product product = productRepository.findByIdWithLock(itemRequest.getProductId())
                     .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. ID: " + itemRequest.getProductId()));
 
             // 재고 차감
@@ -55,17 +58,63 @@ public class CreateOrderUseCase {
                     .build();
 
             order.addOrderItem(orderItem);
+        }*/
+
+        // 3. 상품 ID 리스트 추출 및 정렬 (락 순서 일관성 보장)
+        List<Long> productIds = request.getOrderItems().stream()
+                .map(OrderItemRequest::getProductId)
+                .sorted()  //ID 순서로 정렬하여 데드락 방지
+                .toList();
+
+        // 4. 재고 차감 (DB 쿼리로 원자적 처리 - 락 불필요!)
+        for (OrderItemRequest itemRequest : request.getOrderItems()) {
+            int updated = productRepository.decreaseStock(
+                    itemRequest.getProductId(),
+                    itemRequest.getQuantity()
+            );
+
+            if (updated == 0) {
+                throw new IllegalStateException(
+                        "재고가 부족합니다. 상품 ID: " + itemRequest.getProductId());
+            }
         }
 
-        // 5. UserCoupon 할인 적용 (도메인 메서드로 위임)
+        // 5. 상품 조회 (재고는 이미 감소됨, 락 불필요)
+        List<Product> products = productRepository.findAllById(productIds);
+        Map<Long, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+
+        // 6. 주문 아이템 추가 및 재고 차감
+        for (OrderItemRequest itemRequest : request.getOrderItems()) {
+            Product product = productMap.get(itemRequest.getProductId());
+
+            // 주문 아이템 생성
+            OrderItem orderItem = OrderItem.builder()
+                    .order(order)
+                    .product(product)
+                    .quantity(itemRequest.getQuantity())
+                    .price(product.getPrice())
+                    .build();
+
+            order.addOrderItem(orderItem);
+        }
+
+        // 7. UserCoupon 할인 적용
         if (request.getCouponId() != null) {
             UserCoupon userCoupon = userCouponRepository.findById(request.getCouponId())
                     .orElseThrow(() -> new IllegalArgumentException("사용자 쿠폰을 찾을 수 없습니다. ID: " + request.getCouponId()));
             order.applyDiscount(userCoupon);
         }
 
-        // 6. 포인트 결제 처리 (도메인 메서드로 위임)
-        order.processPayment(pointWallet);
+        // 8. 포인트 결제 (DB 쿼리로 처리)
+        int updated = pointWalletRepository.decreaseBalance(
+                request.getUserId(),
+                order.getFinalAmount()
+        );
+
+        if (updated == 0) {
+            throw new IllegalStateException("포인트가 부족합니다.");
+        }
 
         // 7. 주문 저장
         return orderRepository.save(order);

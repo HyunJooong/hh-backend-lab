@@ -6,7 +6,7 @@ import com.choo.hhbackendlab.entity.UserCoupon;
 import com.choo.hhbackendlab.repository.CouponRepository;
 import com.choo.hhbackendlab.repository.UserCouponRepository;
 import com.choo.hhbackendlab.repository.UserRepository;
-import com.choo.hhbackendlab.service.CouponIssueQueueService;
+import com.choo.hhbackendlab.service.CouponIssue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +21,10 @@ public class IssueCouponUseCase {
     private final CouponRepository couponRepository;
     private final UserRepository userRepository;
     private final UserCouponRepository userCouponRepository;
-    private final CouponIssueQueueService queueService;
+    private final CouponIssue couponIssue;
 
     /**
-     * 특정 쿠폰 ID로 쿠폰 발급
+     * 특정 쿠폰 ID로 1장 쿠폰 발급
      */
     @Transactional
     public Long issueCoupon(Long userId, Long couponId) {
@@ -33,6 +33,21 @@ public class IssueCouponUseCase {
 
         Coupon coupon = couponRepository.findById(couponId)
                 .orElseThrow(() -> new IllegalArgumentException("쿠폰을 찾을 수 없습니다. Coupon ID: " + couponId));
+
+        //쿠폰 중복 여부 확인
+        boolean alreadyIssued = userCouponRepository.existsByUserIdAndCouponId(userId, couponId);
+        if(alreadyIssued) {
+            throw new IllegalStateException(
+                    "이미 발급받은 쿠폰입니다. 쿠폰명: " + coupon.getName());
+        }
+
+        // 재고 감소 성공 실패 여부 확인(동시성 이슈)
+        int updatedCoupon = couponRepository.decreaseCouponCount(couponId);
+
+        if (updatedCoupon == 0) {
+            throw new IllegalStateException(
+                    "쿠폰 발행 중 문제가 생겨 잠시후 다시 시도해주세요.");
+        }
 
         // 쿠폰 발급 (couponCnt 감소 및 UserCoupon 생성)
         UserCoupon userCoupon = coupon.issueCoupon(user);
@@ -56,6 +71,6 @@ public class IssueCouponUseCase {
     public Long issueCouponByName(Long userId, String couponName) {
         // Queue에 쿠폰 발급 요청 추가
         // 실제 쿠폰 발급은 CouponIssueQueueProcessor에서 비동기로 처리됨
-        return queueService.addToQueue(userId, couponName);
+        return couponIssue.addToQueue(userId, couponName);
     }
 }

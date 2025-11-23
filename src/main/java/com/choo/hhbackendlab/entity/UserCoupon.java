@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 /**
  * 사용자에게 발급된 쿠폰
@@ -29,6 +31,9 @@ public class UserCoupon {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;  // 쿠폰 소유자
 
+    @Column(unique = true, nullable = false)
+    private String couponCode;  // 쿠폰 코드값
+    
     @Column(nullable = false)
     private boolean isUsed;  // 사용 여부
 
@@ -52,7 +57,23 @@ public class UserCoupon {
 
         this.coupon = coupon;
         this.user = user;
+        this.couponCode = generateCouponCode();
         this.isUsed = false;
+    }
+
+    /**
+     * 쿠폰 고유 코드값 생성
+     * 사용자 마다 다른 쿠폰 코드값을 발급해 쿠폰 도용 방지
+     * @return
+     */
+    private String generateCouponCode() {
+        // 날짜 + 랜덤값
+        String timestamp = LocalDateTime.now()
+                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String randomValue = UUID.randomUUID().toString()
+                .substring(0, 8).toUpperCase();
+
+        return timestamp + "-" + randomValue;
     }
 
     /**

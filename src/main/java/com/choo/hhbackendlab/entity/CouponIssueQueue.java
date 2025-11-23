@@ -1,5 +1,6 @@
 package com.choo.hhbackendlab.entity;
 
+import com.choo.hhbackendlab.redis.QueueStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

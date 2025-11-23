@@ -1,15 +1,39 @@
 package com.choo.hhbackendlab.repository;
 
 import com.choo.hhbackendlab.entity.Product;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository <Product, Long> {
+
+
+    /**
+     * 비관적락으로 상품 조회
+     * @param productId
+     * @return
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM PRODUCT p WHERE p.id = :productId")
+    Optional<Product> findByIdWithLock(@Param("productId") Long productId);
+
+    /**
+     * 재고 원자적 감소
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE PRODUCT p SET p.stock = p.stock - :quantity " +
+            "WHERE p.id = :productId AND p.stock >= :quantity")
+    int decreaseStock(@Param("productId") Long productId,
+                      @Param("quantity") int quantity);
 
     /**
      * 조회수 순으로 상품 조회 (인기 상품)
@@ -28,4 +52,13 @@ public interface ProductRepository extends JpaRepository <Product, Long> {
            "GROUP BY p.id " +
            "ORDER BY SUM(COALESCE(oi.quantity, 0)) DESC")
     List<Product> findTopProductsBySalesInLastWeek(@org.springframework.data.repository.query.Param("weekAgo") java.time.LocalDateTime weekAgo, Pageable pageable);
+
+    /**
+     * 상품 조회수를 증가시킵니다. (벌크 업데이트)
+     * @param productId 상품 ID
+     * 매번 UPDATE 비효율 -> DB 부하를 줄이이기 위해 Redis로 구현 예정..
+     */
+    @Modifying
+    @Query("UPDATE PRODUCT p SET p.viewCount = p.viewCount + 1 WHERE p.id = :productId")
+    void incrementViewCount(@Param("productId") Long productId);
 }
