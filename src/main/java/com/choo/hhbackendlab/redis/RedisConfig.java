@@ -1,7 +1,7 @@
 package com.choo.hhbackendlab.redis;
 
-import io.lettuce.core.RedisClient;
 import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.EnableCaching;
@@ -18,15 +18,15 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 public class RedisConfig {
 
     @Bean
-    public RedisClient redisClient(
-            @Value("${spring.data.redis.host") String host
+    public RedissonClient redisClient(
+            @Value("${spring.data.redis.host}") String host
             , @Value("${spring.data.redis.port}") int port
     ) {
         Config config = new Config();
         config.useSingleServer()
                 .setAddress("redis://" + host + ":" + port);
 
-        return (RedisClient) Redisson.create(config);
+        return Redisson.create(config);
     }
 
     @Bean
