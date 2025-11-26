@@ -6,7 +6,7 @@ import com.choo.hhbackendlab.entity.UserCoupon;
 import com.choo.hhbackendlab.repository.CouponRepository;
 import com.choo.hhbackendlab.repository.UserCouponRepository;
 import com.choo.hhbackendlab.repository.UserRepository;
-import com.choo.hhbackendlab.service.CouponIssue;
+import com.choo.hhbackendlab.redis.CouponIssue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
