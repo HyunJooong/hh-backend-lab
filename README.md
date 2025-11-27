@@ -391,6 +391,30 @@ test/
 # 통합 테스트만 실행
 ./gradlew test --tests "*.integration.*"
 ```
+## ⚡ Caching 전략 
+
+- ✅ 애플리케이션 시작과 동시에 캐시 준비 완료
+- ✅ limit=15 요청 → TOP 20 캐시 사용 (캐시 히트)
+- ✅ 주문 즉시 캐시 갱신으로 실시간 반영
+
+  ---
+🎯 캐싱 전략 정리
+
+Cache-Aside Pattern (Lazy Loading)
+
+- 캐시 우선 조회 → 없으면 DB 조회 후 캐싱
+- TTL: 1시간 30분 (스케줄러 주기보다 여유있게 설정)
+
+Scheduled Refresh (Proactive Caching)
+
+- 매 1시간마다 자동 갱신 (@Scheduled)
+- TOP 10, 20, 50을 미리 준비
+
+Event-Driven Invalidation (실시간성 확보)
+
+- 주문 완료 시 트랜잭션 커밋 후 즉시 갱신
+- 비동기 처리로 성능 영향 최소화
+
 
 ## ⚡ 성능 최적화
 
