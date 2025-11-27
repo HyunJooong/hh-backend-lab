@@ -17,11 +17,14 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 @EnableCaching
 public class RedisConfig {
 
+    @Value("${spring.data.redis.host}")
+    private String host;
+
+    @Value("${spring.data.redis.port}")
+    private int port;
+
     @Bean
-    public RedissonClient redisClient(
-            @Value("${spring.data.redis.host}") String host
-            , @Value("${spring.data.redis.port}") int port
-    ) {
+    public RedissonClient redisClient() {
         Config config = new Config();
         config.useSingleServer()
                 .setAddress("redis://" + host + ":" + port);
@@ -29,8 +32,9 @@ public class RedisConfig {
         return Redisson.create(config);
     }
 
+
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
-        return new LettuceConnectionFactory("localhost", 6379);
+        return new LettuceConnectionFactory(host, port);
     }
 }

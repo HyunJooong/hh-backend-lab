@@ -2,12 +2,15 @@ package com.choo.hhbackendlab.usecase.order;
 
 import com.choo.hhbackendlab.dto.requestDto.OrderItemRequest;
 import com.choo.hhbackendlab.dto.requestDto.OrderRequest;
-import com.choo.hhbackendlab.entity.*;
+import com.choo.hhbackendlab.entity.Order;
+import com.choo.hhbackendlab.entity.User;
 import com.choo.hhbackendlab.helper.DistributedLockHelper;
-import com.choo.hhbackendlab.repository.*;
+import com.choo.hhbackendlab.helper.OrderTransactionProcessor;
+import com.choo.hhbackendlab.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * 새로운 주문을 생성하고, 포인트 결제를 처리하며, 재고를 차감한다
@@ -16,12 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CreateOrderUseCase {
 
-    private final OrderRepository orderRepository;
     private final UserRepository userRepository;
-    private final ProductRepository productRepository;
-    private final PointWalletRepository pointWalletRepository;
-    private final UserCouponRepository userCouponRepository;
     private final DistributedLockHelper lockHelper;
+    private final OrderTransactionProcessor transactionProcessor;
 
     public Order createOrder(OrderRequest request) {
 
@@ -35,64 +35,44 @@ public class CreateOrderUseCase {
             throw new IllegalArgumentException("주문 상품이 없습니다.");
         }
 
-        //  2. 사용자별 분산락 적용
-        String lockKey = "order:user:" + user.getId();
+        // 2. 상품별 분산락 적용 (overselling 방지)
+        // 주문에 포함된 모든 상품 ID를 정렬하여 데드락 방지
+        List<Long> productIds = request.getOrderItems().stream()
+                .map(OrderItemRequest::getProductId)
+                .sorted()
+                .toList();
 
-        return lockHelper.executeWithLock(lockKey, 5, 10, () -> {
-            return processOrderWithDbLock(request, user);
-        });
+        // 각 상품에 대해 순차적으로 락을 획득하며 주문 처리
+        return processOrderWithProductLocks(request, user, productIds, 0);
     }
 
-    @Transactional
-    protected Order processOrderWithDbLock(OrderRequest request, User user) {
+    /**
+     * 상품별 락을 재귀적으로 획득하며 주문을 처리합니다.
+     *
+     * @param request 주문 요청
+     * @param user 주문 사용자
+     * @param productIds 정렬된 상품 ID 리스트
+     * @param index 현재 처리 중인 상품 인덱스
+     * @return 생성된 주문
+     */
+    private Order processOrderWithProductLocks(
+            OrderRequest request,
+            User user,
+            List<Long> productIds,
+            int index) {
 
-        Order order = Order.createOrder(user);
-
-        // 재고 차감
-        for (OrderItemRequest item : request.getOrderItems()) {
-            int updated = productRepository.decreaseStock(
-                    item.getProductId(),
-                    item.getQuantity()
-            );
-
-            if (updated == 0) {
-                throw new IllegalStateException(
-                        "재고가 부족합니다. 상품 ID: " + item.getProductId());
-            }
-
-            Product product = productRepository.findById(item.getProductId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "상품을 찾을 수 없습니다. ID: " + item.getProductId()));
-
-            OrderItem orderItem = OrderItem.builder()
-                    .order(order)
-                    .product(product)
-                    .quantity(item.getQuantity())
-                    .price(product.getPrice())
-                    .build();
-            order.addOrderItem(orderItem);
+        // 모든 상품에 대한 락을 획득한 경우, 실제 주문 처리
+        if (index >= productIds.size()) {
+            return transactionProcessor.processOrder(request, user);
         }
 
-        // 쿠폰 적용
-        if (request.getCouponId() != null) {
-            UserCoupon coupon = userCouponRepository.findById(request.getCouponId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "쿠폰을 찾을 수 없습니다. ID: " + request.getCouponId()));
-            order.applyDiscount(coupon);
-        }
+        // 현재 상품에 대한 락 획득
+        String lockKey = "order:product:" + productIds.get(index);
 
-        // 포인트 차감
-        int updated = pointWalletRepository.decreaseBalance(
-                user.getId(),
-                order.getFinalAmount()
-        );
-
-        if (updated == 0) {
-            throw new IllegalStateException(
-                    "포인트가 부족합니다. 필요 금액: " + order.getFinalAmount());
-        }
-
-        return orderRepository.save(order);
+        return lockHelper.executeWithLock(lockKey, 5, 10, () -> {
+            // 다음 상품에 대한 락 획득 (재귀)
+            return processOrderWithProductLocks(request, user, productIds, index + 1);
+        });
     }
 }
 
