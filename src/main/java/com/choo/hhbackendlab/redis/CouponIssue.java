@@ -1,4 +1,4 @@
-package com.choo.hhbackendlab.service;
+package com.choo.hhbackendlab.redis;
 
 import com.choo.hhbackendlab.entity.*;
 import com.choo.hhbackendlab.redis.QueueStatus;
