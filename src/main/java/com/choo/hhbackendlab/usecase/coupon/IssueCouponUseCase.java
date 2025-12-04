@@ -60,17 +60,17 @@ public class IssueCouponUseCase {
 
     /**
      * 선착순 쿠폰 발급 (쿠폰 이름으로 발급)
-     * Queue 기반 동시성 제어
+     * Redis Sorted Set 기반 동시성 제어
      * 현재는 이름으로 발급하지만, 추후 카테고리를 생성해 쿠폰 코드번호로 발급할 예정..
      *
      * @param userId 사용자 ID
      * @param couponName 쿠폰 이름
-     * @return Queue ID (실제 발급은 비동기로 처리됨)
+     * @return 대기열 순서 (0부터 시작, 실제 발급은 비동기로 처리됨)
      */
     @Transactional
     public Long issueCouponByName(Long userId, String couponName) {
-        // Queue에 쿠폰 발급 요청 추가
-        // 실제 쿠폰 발급은 CouponIssueQueueProcessor에서 비동기로 처리됨
-        return couponIssue.addToQueue(userId, couponName);
+        // Redis Sorted Set에 쿠폰 발급 요청 추가
+        // 실제 쿠폰 발급은 CouponIssueProcessor에서 비동기로 처리됨
+        return couponIssue.addToWaitingList(userId, couponName);
     }
 }
