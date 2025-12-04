@@ -7,7 +7,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -36,8 +39,9 @@ public class GetTopProductsBySalesUseCase {
     private final ProductRepository productRepository;
     private final RedisTemplate<String, String> redisTemplate;
 
-    // Redis Sorted Set 키: 주간 판매량 랭킹
-    private static final String WEEKLY_RANKING_KEY = "products:ranking:weekly:sales";
+    // Redis Sorted Set 키: 주간 판매량 랭킹 (메모리 최적화를 위해 축약)
+    // pds:rks:wek:sl = products:ranking:weekly:sales
+    private static final String WEEKLY_RANKING_KEY = "pds:rks:wek:sl";
 
     // TTL: 7일 (주간 랭킹은 일주일 후 만료)
     private static final long WEEKLY_TTL_DAYS = 7;
@@ -58,7 +62,6 @@ public class GetTopProductsBySalesUseCase {
      * @param limit 조회할 상품 개수
      * @return 인기 상품 목록 (최근 7일간 판매량 내림차순)
      */
-    @Transactional(readOnly = true)
     public List<Product> getTopProductsBySales(int limit) {
         if (limit <= 0) {
             throw new IllegalArgumentException("조회할 상품 개수는 1개 이상이어야 합니다.");
@@ -134,6 +137,7 @@ public class GetTopProductsBySalesUseCase {
 
     /**
      * DB에서 최근 7일 판매량 데이터를 조회하여 Redis Sorted Set 동기화
+     * Redis Pipeline을 사용하여 네트워크 왕복 횟수를 최소화 (N회 → 1회)
      */
     @Transactional(readOnly = true)
     protected void syncRankingFromDatabase() {
@@ -152,29 +156,42 @@ public class GetTopProductsBySalesUseCase {
                 return;
             }
 
-            ZSetOperations<String, String> zSetOps = redisTemplate.opsForZSet();
+            // 임시 키 사용 (원자성 보장)
+            String tempKey = WEEKLY_RANKING_KEY + ":temp:" + System.currentTimeMillis();
 
-            // 기존 랭킹 삭제
-            redisTemplate.delete(WEEKLY_RANKING_KEY);
+            // Redis Pipeline으로 일괄 처리 (네트워크 왕복 최소화)
+            redisTemplate.executePipelined(new SessionCallback<Object>() {
+                @Override
+                public Object execute(RedisOperations operations) throws DataAccessException {
+                    ZSetOperations<String, String> zSetOps = operations.opsForZSet();
 
-            // 새로운 랭킹 데이터 삽입
-            for (Product product : products) {
-                // 판매량 계산 (OrderItem에서 집계된 값 사용)
-                Long salesCount = calculateSalesCount(product.getId(), weekAgo);
+                    // 임시 키에 모든 상품 추가
+                    for (Product product : products) {
+                        // 판매량 계산 (OrderItem에서 집계된 값 사용)
+                        Long salesCount = calculateSalesCount(product.getId(), weekAgo);
 
-                if (salesCount > 0) {
-                    zSetOps.add(WEEKLY_RANKING_KEY,
-                               product.getId().toString(),
-                               salesCount.doubleValue());
+                        if (salesCount > 0) {
+                            zSetOps.add(tempKey,
+                                       product.getId().toString(),
+                                       salesCount.doubleValue());
+                        }
+                    }
+
+                    // 파이프라인에서는 반환값이 무시됨
+                    return null;
                 }
-            }
+            });
+
+            // 기존 키 삭제 후 임시 키를 실제 키로 이름 변경 (원자적 교체)
+            redisTemplate.delete(WEEKLY_RANKING_KEY);
+            redisTemplate.rename(tempKey, WEEKLY_RANKING_KEY);
 
             // TTL 설정 (7일)
             redisTemplate.expire(WEEKLY_RANKING_KEY, WEEKLY_TTL_DAYS, TimeUnit.DAYS);
 
             long elapsedTime = System.currentTimeMillis() - startTime;
             log.info("===== 주간 판매량 랭킹 DB 동기화 완료 ===== " +
-                    "상품 수: {}, 소요시간: {}ms", products.size(), elapsedTime);
+                    "상품 수: {}, 소요시간: {}ms (파이프라인 적용)", products.size(), elapsedTime);
 
         } catch (Exception e) {
             log.error("주간 판매량 랭킹 DB 동기화 실패", e);
