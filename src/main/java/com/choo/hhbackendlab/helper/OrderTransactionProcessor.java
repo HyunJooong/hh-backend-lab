@@ -78,27 +78,36 @@ public class OrderTransactionProcessor {
 
         Order savedOrder = orderRepository.save(order);
 
-        // 트랜잭션 커밋 후 판매량 캐시 무효화 (비동기)
-        registerCacheInvalidationAfterCommit();
+        // 트랜잭션 커밋 후 실시간 판매량 증가 (비동기)
+        registerSalesIncrementAfterCommit(request);
 
         return savedOrder;
     }
 
     /**
-     * 트랜잭션 커밋 후 판매량 캐시 무효화
-     * 트랜잭션이 완전히 커밋된 후에 캐시를 무효화하여 데이터 정합성 보장
+     * 트랜잭션 커밋 후 Redis 판매량 실시간 증가
+     * 트랜잭션이 완전히 커밋된 후에 Redis Sorted Set 스코어를 증가시켜 데이터 정합성 보장
      */
-    private void registerCacheInvalidationAfterCommit() {
+    private void registerSalesIncrementAfterCommit(OrderRequest request) {
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
                         try {
-                            log.debug("주문 완료 후 판매량 캐시 무효화 시작");
-                            topProductsBySalesUseCase.forceRefreshCache();
+                            log.debug("주문 완료 후 판매량 실시간 증가 시작");
+
+                            // 주문한 각 상품의 판매량을 Redis에 반영
+                            for (OrderItemRequest item : request.getOrderItems()) {
+                                topProductsBySalesUseCase.incrementSales(
+                                        item.getProductId(),
+                                        item.getQuantity()
+                                );
+                            }
+
+                            log.debug("판매량 증가 완료: {} 개 상품", request.getOrderItems().size());
                         } catch (Exception e) {
-                            // 캐시 갱신 실패는 주문 처리에 영향을 주지 않음
-                            log.error("판매량 캐시 갱신 실패 (주문은 정상 처리됨)", e);
+                            // Redis 오류는 주문 처리에 영향을 주지 않음
+                            log.error("판매량 증가 실패 (주문은 정상 처리됨)", e);
                         }
                     }
                 }

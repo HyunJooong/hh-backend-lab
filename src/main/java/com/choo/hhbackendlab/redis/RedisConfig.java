@@ -86,4 +86,26 @@ public class RedisConfig {
         template.afterPropertiesSet();
         return template;
     }
+
+    /**
+     * String 전용 RedisTemplate
+     * Sorted Set 등 일반적인 Redis 자료구조용
+     */
+    @Bean
+    public RedisTemplate<String, String> redisTemplate(
+            RedisConnectionFactory connectionFactory) {
+
+        RedisTemplate<String, String> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+
+        // Key-Value 모두 String 직렬화
+        StringRedisSerializer stringSerializer = new StringRedisSerializer();
+        template.setKeySerializer(stringSerializer);
+        template.setValueSerializer(stringSerializer);
+        template.setHashKeySerializer(stringSerializer);
+        template.setHashValueSerializer(stringSerializer);
+
+        template.afterPropertiesSet();
+        return template;
+    }
 }

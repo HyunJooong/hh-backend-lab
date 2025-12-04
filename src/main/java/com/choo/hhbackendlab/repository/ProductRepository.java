@@ -61,4 +61,16 @@ public interface ProductRepository extends JpaRepository <Product, Long> {
     @Modifying
     @Query("UPDATE PRODUCT p SET p.viewCount = p.viewCount + 1 WHERE p.id = :productId")
     void incrementViewCount(@Param("productId") Long productId);
+
+    /**
+     * 특정 상품의 최근 7일간 판매량 집계
+     * @param productId 상품 ID
+     * @param weekAgo 7일 전 시간
+     * @return 판매량 (없으면 0)
+     */
+    @Query("SELECT COALESCE(SUM(oi.quantity), 0) FROM ORDER_ITEM oi " +
+           "JOIN ORDERS o ON oi.order.id = o.id " +
+           "WHERE oi.product.id = :productId AND o.orderedAt >= :weekAgo")
+    Long calculateSalesCountByProductId(@Param("productId") Long productId,
+                                        @Param("weekAgo") java.time.LocalDateTime weekAgo);
 }
