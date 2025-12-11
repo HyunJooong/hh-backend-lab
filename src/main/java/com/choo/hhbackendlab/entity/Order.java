@@ -47,6 +47,9 @@ public class Order {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;  // 취소 일시
 
+    @Column(nullable = false, length = 20)
+    private String status = "PENDING";  // 주문 상태: PENDING, CONFIRMED, CANCELLED
+
     /**
      * 주문 생성자
      */
@@ -129,11 +132,26 @@ public class Order {
     }
 
     /**
+     * 주문 확정 (모든 처리 완료)
+     */
+    public void confirm() {
+        this.status = "CONFIRMED";
+    }
+
+    /**
+     * 주문 상태 변경
+     */
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    /**
      * 주문 취소 (비즈니스 로직)
      */
     public void cancel() {
         validateCancellable();
         this.cancelledAt = LocalDateTime.now();
+        this.status = "CANCELLED";
         restoreStock();
         cancelCoupon();
     }
